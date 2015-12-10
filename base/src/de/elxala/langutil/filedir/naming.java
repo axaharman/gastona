@@ -1,6 +1,6 @@
 /*
-java package de.elxala.Eva (see EvaFormat.PDF)
-Copyright (C) 2005  Alejandro Xalabarder Aulet
+java package for gastona wwww.gastona.org
+Copyright (C) 2005-2015  Alejandro Xalabarder Aulet
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -34,11 +34,38 @@ import de.elxala.langutil.*;
 */
 public class naming
 {
+   static int UNIQUE_LONNAME_ID = 0;
    
+   public static String toVariableName (String text)
+   {
+      if (text.length == 0) return "_";
+      return toNameISO_9660Joliet (text);
+   }
+
+   // allow array as parameter for static call JAVAJ STATIC
+   // but only the first element will be processed
    public static String toVariableName (String [] text)
    {
       if (text.length == 0) return "_";
-      return toNameISO_9660Joliet (text[0]);
+      return toVariableName (text[0]);
+   }
+
+   // if fullname length is less that 61 then return it unchanged
+   // if not the resulting name will have 63 characters and the last
+   // 7 are a "unique" number (until 10 millions unique numbers!)
+   private static String upto64LenName (String fullname)
+   {
+      if (fullname.length () <= 60) return fullname;
+
+      String uniqueNr = "000000" + (UNIQUE_LONNAME_ID ++);
+      uniqueNr = uniqueNr.substring (uniqueNr.length ()-7);
+
+      return fileName.substring (0, 56) + uniqueNr;
+   } 
+
+   public static String toNameISO_9660Joliet (String fileName)
+   {
+      return toNameISO_9660Joliet (fileName, true);
    }
 
    /**
@@ -48,9 +75,9 @@ public class naming
       file name length <= 64
       file name do not contain strange characters (like ';' typically when saving internet pages with IExplorer)
    */
-   public static String toNameISO_9660Joliet (String fileName)
+   public static String toNameISO_9660Joliet (String fileName, boolean allowMinusChar)
    {
-      String ss = fileName.length () > 60 ? fileName.substring (0, 60): fileName;
+      String ss = upto64LenName (fileName);
 
       for (int ii = 0; ii < ss.length (); ii ++)
       {
@@ -58,7 +85,7 @@ public class naming
          if ((ica >= '0' && ica <= '9') ||
              (ica >= 'A' && ica <= 'Z') ||
              (ica >= 'a' && ica <= 'z') || 
-             ica == '.' || ica == '-' || ica == '_') continue;
+             ica == '.' || (allowMinusChar && ica == '-') || ica == '_') continue;
          ss = ss.replace (ica, '_');
       }
 

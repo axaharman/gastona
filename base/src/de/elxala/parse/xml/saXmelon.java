@@ -120,14 +120,19 @@ public class saXmelon
    }
 
    List subTagIgnoreList = new Vector ();
+   List rootTagIgnoreList = new Vector ();
 
    /**
       Parses the xml file 'fileToParse' and places the results in an xmelon
       schema into the database dbName using 'tablePrefix' for naming the tables.
    */
-   public void parseFile (String fileToParse, String dbName, String tablePrefix, boolean keepCache, List ignoreSubTagList)
+   public void parseFile (String fileToParse, String dbName, String tablePrefix, boolean keepCache, List ignoreSubTagList, List ignoreRootTags)
    {
-      subTagIgnoreList = (ignoreSubTagList == null) ? new Vector (): ignoreSubTagList;
+      // ignore subTag list : these tags will be transparent (the descendant elements will be treated)
+      subTagIgnoreList = (ignoreSubTagList == null) ? new Vector (): ignoreSubTagList; 
+
+      // ignore rootTag list : these tags and all its descendants will be ignored
+      rootTagIgnoreList = (ignoreRootTags == null) ? new Vecor (): ignoreRootTags;
 
       processOneFile (dbName, fileToParse, tablePrefix, keepCache);
    }
@@ -186,6 +191,13 @@ public class saXmelon
       // push element stack
       xemi.perFile.currentPath.addLine (ele);
 
+      if (rootTagIgnoreList.contains (type))
+      {
+         log.dbg (2, "startElement", "root tag " + type + " will be ignored");
+         xemi.perFile.ignoringContent = true;
+         return;
+      }
+
       long pathTyId = -1;
 
       // collect attribute names
@@ -235,8 +247,14 @@ public class saXmelon
          // then are two possible cases
          //
          //    hasData
-
-         if (subTagIgnoreList.contains (type))
+         if (rootTagIgnoreList.contains (type))
+         {
+            log.dbg (2, "endElement", "ignoring tag root " + type);
+            keepData = true; // I think it make no difference, within ignored root tags no data is added
+            stored = true;
+            xemi.perFile.ignoringContent = false;
+         }
+         else if (subTagIgnoreList.contains (type))
          {
             log.dbg (2, "endElement", "ignoring tag sublevel " + type);
             // System.out.println ("eliminello [" + type + "]");
@@ -281,7 +299,8 @@ public class saXmelon
 
    public void characters (char[] ch, int start, int len)
    {
-      xemi.perFile.strData += (new String (ch, start, len)).trim ();
+      if (!xemi.perFile.ignoringContent)
+         xemi.perFile.strData += (new String (ch, start, len)).trim ();
    }
 
 
